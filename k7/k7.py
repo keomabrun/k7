@@ -4,6 +4,7 @@ This module provides methods to parse and manipulate K7 files
 
 import json
 import pandas as pd
+import gzip
 
 REQUIRED_HEADER_FIELDS = [
     'start_date',
@@ -25,13 +26,19 @@ __version__ = "0.0.3"
 def read(file_path):
     """
     Read the k7
-    :param file_path:
+    :param str file_path:
     :return:
     :rtype: dict, pandas.Dataframe
     """
     # read header
-    with open(file_path, 'r') as f:
-        header = json.loads(f.readline())
+    if file_path.endswith('k7.gz'):
+        with gzip.open(file_path, 'r') as f:
+            header = json.loads(f.readline())
+    elif file_path.endswith('k7'):
+        with open(file_path, 'r') as f:
+            header = json.loads(f.readline())
+    else:
+        raise Exception("Suported file extensions are: {0}".format(["k7.gz", "k7"]))
 
     # read data
     df = pd.read_csv(file_path,

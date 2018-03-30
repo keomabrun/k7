@@ -22,6 +22,6 @@ setup(
     packages=['k7'],
     install_requires=['pandas'],
     package_data={
-        'samples': ['sample.k7'],
+        'samples': ['sample.k7', 'sample.k7.gz],
         },
     )
