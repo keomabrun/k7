@@ -1,5 +1,5 @@
-{"site": "grenoble", "tx_length": 100, "start_date": "2018-01-11 16:32:22", "stop_date": "2018-01-13 16:21:30", "tx_count": 100, "node_count": 44, "channel_count": 16, "transaction_count": 10, "tx_ifdur": 100}
-datetime,src,dst,channel,mean_rssi,pdr,transaction_id
+{"location": "grenoble", "tx_length": 100, "start_date": "2018-01-11 16:32:22", "stop_date": "2018-01-13 16:21:30", "tx_count": 100, "node_count": 44, "channel_count": 16, "transaction_count": 10, "tx_ifdur": 100}
+datetime,src,dst,channels,mean_rssi,pdr,transaction_id
 2018-01-11 16:33:07,d9-a5-68,d5-25-53,11,-53.2,1.0,0
 2018-01-11 16:33:07,d9-a5-68,db-b2-76,11,-84.03,0.97,0
 2018-01-11 16:33:07,d9-a5-68,d7-93-78,11,-83.88,1.0,0

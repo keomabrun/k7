@@ -9,19 +9,19 @@ import gzip
 REQUIRED_HEADER_FIELDS = [
     'start_date',
     'stop_date',
-    'site',
+    'location',
 ]
 REQUIRED_DATA_FIELDS = [
     'datetime',
     'src',
     'dst',
-    'channel',
+    'channels',
     'mean_rssi',
     'pdr',
     'transaction_id'
 ]
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 def read(file_path):
     """
@@ -44,7 +44,7 @@ def read(file_path):
     df = pd.read_csv(file_path,
                      parse_dates = ['datetime'],
                      index_col = [0],  # make datetime column as index
-                     dtype={'channel': str},
+                     dtype={'channels': str},
                      skiprows=1,
                      )
     return header, df
@@ -78,9 +78,9 @@ def match(trace, source, destination, channel=None, transaction_id=None):
 
     # channel
     if channel is None:
-        channel = "11-26"
+        channels = "11-26"
     else:
-        channel = str(channel + 11)
+        channels = str(channel + 11)
 
     # transaction id
     if transaction_id is None:
@@ -89,7 +89,7 @@ def match(trace, source, destination, channel=None, transaction_id=None):
     # get rows
     series = trace[(trace.src == source) &
                    (trace.dst == destination) &
-                   (trace.channel == channel) &
+                   (trace.channels == channels) &
                    (trace.transaction_id == transaction_id)
             ]
 
