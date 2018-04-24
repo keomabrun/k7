@@ -9,7 +9,7 @@ with open(os.path.join(HERE, 'README.md'), 'r') as f:
 
 setup(
     name='k7',
-    version='0.0.4',
+    version='0.0.5',
     description='Manipulate k7 files with one hand',
     long_description=long_description,
     url='http://github.com/keomabrun/k7',
