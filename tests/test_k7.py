@@ -28,7 +28,7 @@ def test_write():
 
     data = pd.DataFrame(
         [
-            ["2018-01-11 16:33:07", "db-b8-77", "dd-b3-80", [26], "-91.0", "0.92", "2"],
+            ["2018-01-11 16:33:07", 0, 1, [26], "-91.0", "0.92", "2"],
         ],
         columns=k7.REQUIRED_DATA_FIELDS
     )
@@ -42,5 +42,5 @@ def test_check(file_path):
 @pytest.mark.parametrize("file_path", INPUT_FILES)
 def test_match(file_path):
     header, trace = k7.read(file_path)
-    assert k7.match(trace, "d9-a5-68", "d5-25-53",  [11]) is not None
-    assert k7.match(trace, "d9-a5-68", "d5-25-53", [999]) is None
+    assert k7.match(trace, 0, 1,  [11]) is not None
+    assert k7.match(trace, 0, 1, [999]) is None

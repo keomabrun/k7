@@ -4,12 +4,20 @@ This module provides methods to parse and manipulate K7 files
 
 import json
 import pandas as pd
+import numpy as np
 import gzip
+
+import __version__
 
 REQUIRED_HEADER_FIELDS = [
     'start_date',
     'stop_date',
     'location',
+    'node_count',
+    'transaction_count',
+    'channels',
+    'tx_count',
+    'tx_ifdur',
 ]
 REQUIRED_DATA_FIELDS = (
     'datetime',
@@ -20,8 +28,6 @@ REQUIRED_DATA_FIELDS = (
     'pdr',
     'transaction_id'
 )
-
-__version__ = "0.0.5"
 
 def read(file_path):
     """
@@ -41,13 +47,15 @@ def read(file_path):
         raise Exception("Supported file extensions are: {0}".format(["k7.gz", "k7"]))
 
     # read data
-    df = pd.read_csv(
+    data = pd.read_csv(
         file_path,
         parse_dates = ['datetime'],
         index_col = [0],  # make datetime column as index
-        skiprows = 1
+        skiprows = 1,
+        converters = {'channels': lambda x: [int(c) for c in x.strip("[]").split(';')]}
     )
-    return header, df
+
+    return header, data
 
 def write(output_file_path, header, data):
     """
@@ -68,14 +76,14 @@ def write(output_file_path, header, data):
         f.write('\n')
 
         # write data
-        data.to_csv(f)
+        data.to_csv(f, columns=REQUIRED_DATA_FIELDS[1:])
 
 def match(trace, source, destination, channels=None, transaction_id=None):
     """
     Find matching rows in the k7
     :param pandas.Dataframe trace:
-    :param str source:
-    :param str destination:
+    :param int source:
+    :param int destination:
     :param list channels:
     :param int transaction_id:
     :return: None | pandas.core.series.Series
@@ -90,17 +98,16 @@ def match(trace, source, destination, channels=None, transaction_id=None):
         transaction_id = trace.transaction_id.min()
 
     # get rows
-    series = trace[
-        (trace.src == source) &
-        (trace.dst == destination) &
-        (trace.channels == channel_list_to_str(channels)) &
-        (trace.transaction_id == transaction_id)
-    ]
+    for index, row in trace.iterrows():
+        if (
+                row['src'] == source and
+                row['dst'] == destination and
+                row['transaction_id'] == transaction_id and
+                set(channels) < set(row['channels'])
+        ):
+            return row
 
-    if len(series) >= 1:
-        return series.iloc[0]  # return first element
-    else:
-        return None
+    return None
 
 def fill(file_path):
     """
@@ -109,8 +116,23 @@ def fill(file_path):
     """
 
     header, df = read(file_path)
-
     missing_rows = []
+
+    # fill missing links
+    for link in get_missing_links(header, df):
+        missing_rows.append(
+            {
+                "datetime": link['transaction_fist_date'],
+                "src": link['src'],
+                "dst": link['dst'],
+                "channels": channel_list_to_str(header['channels']),
+                "mean_rssi": None,
+                "pdr": 0,
+                "transaction_id": link['transaction_id'],
+            }
+        )
+
+    # fill missing channels
     for name, group in df.groupby(["src", "dst", "transaction_id"]):
         first_date = group.index.min()
         src, dst, t_id = name[0], name[1], name[2]
@@ -118,7 +140,7 @@ def fill(file_path):
         # find missing channels in group
         missing_channels = get_missing_channels(header['channels'], group)
 
-        # add missing row to list
+        # add missing channel rows to list
         for c in missing_channels:
             missing_rows.append(
                 {
@@ -155,8 +177,18 @@ def check(file_path):
         if required_header not in header:
             print "Header {0} missing".format(required_header)
 
-    max_num_links = sum([i for i in range(1, header['node_count'] + 1)])
-    lines_per_transaction = len(header['channels']) * max_num_links
+    # check missing links
+    expected_num_links = sum([x for x in range(header['node_count'])]) * 2
+    for transaction_id, transaction_df in df.groupby(["transaction_id"]):
+        link_df = transaction_df.groupby(["src", "dst"])
+        if len(link_df) != expected_num_links:
+            print "Missing links. Found {0}/{1} in transaction {2}".format(
+                len(link_df),
+                expected_num_links,
+                transaction_id
+            )
+
+    # check missing channels
     for name, group in df.groupby(["src", "dst", "transaction_id"]):
         # find missing channels in group
         missing_channels = get_missing_channels(header['channels'], group)
@@ -164,7 +196,58 @@ def check(file_path):
             print "Channel missing for transaction {0}: {1}"\
                   .format(name, missing_channels)
 
+def normalize(file_path):
+    """
+    Normalize the given file:
+      - The source and destination fields are replaced by integers
+    :param file_path:
+    :return: None
+    """
+    normalized = False
+
+    # read file
+    header, df = read(file_path)
+
+    # normalize src and dst
+    if df.src.dtype != np.int64:
+        normalized = True
+        node_ids = df.src.unique()
+        for i in range(len(node_ids)):
+            df.src = df.src.str.replace(node_ids[i], str(i))
+            df.dst = df.dst.str.replace(node_ids[i], str(i))
+
+    # normalize pdr: 0-100 to 0-1
+    if df.pdr.max() > 1:
+        normalized = True
+        df.pdr = df.pdr / 100.0
+
+    # save file
+    if normalized:
+        write("norm_" + file_path, header, df)
+
 # ========================= helpers ===========================================
+
+def get_missing_links(header, df):
+    """ Find missing links in a dataframe
+    :param dict header:
+    :param pd.Dataframe df:
+    :return: a list of dict
+    :rtype: list
+    """
+    links = []
+    for transaction_id, transaction_df in df.groupby(["transaction_id"]):
+        for src in range(header['node_count']):
+            for dst in range(header['node_count']):
+                if src == dst:
+                    continue
+                if not ((transaction_df['src'] == src) & (transaction_df['dst'] == dst)).any():
+                    links.append({
+                        'transaction_fist_date': transaction_df.index[0],
+                        'transaction_id': transaction_id,
+                        'src': src,
+                        'dst': dst
+                    })
+    return links
 
 def get_missing_channels(required_channels, data):
     """ Find missing channels in a dataframe
@@ -173,8 +256,8 @@ def get_missing_channels(required_channels, data):
     :rtype: list
     """
     channels = []
-    for channel_str in data.channels:
-        channel_list = [int(c) for c in channel_str.strip("[]").split(';')]
+    for channel in data.channels:
+        channel_list = channel
         for channel in channel_list:
             if channel not in channels:
                 channels.append(channel)
@@ -206,9 +289,14 @@ if __name__ == "__main__":
                         type=str,
                         dest='file_to_fill',
                         )
+    parser.add_argument("--norm",
+                        help="normalize file",
+                        type=str,
+                        dest='file_to_normalize',
+                        )
     parser.add_argument('-v', '--version',
                         action='version',
-                        version='%(prog)s ' + __version__)
+                        version='%(prog)s ' + __version__.__version__)
     args = parser.parse_args()
 
     # run corresponding method
@@ -216,5 +304,7 @@ if __name__ == "__main__":
         check(args.file_to_check)
     elif args.file_to_fill is not None:
         fill(args.file_to_fill)
+    elif args.file_to_normalize is not None:
+        normalize(args.file_to_normalize)
     else:
         print "Command {0} does not exits."
