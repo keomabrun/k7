@@ -16,16 +16,15 @@ REQUIRED_HEADER_FIELDS = [
     'node_count',
     'transaction_count',
     'channels',
-    'tx_count',
     'tx_ifdur',
 ]
 REQUIRED_DATA_FIELDS = (
-    'datetime',
     'src',
     'dst',
     'channels',
     'mean_rssi',
     'pdr',
+    'tx_count',
     'transaction_id'
 )
 
@@ -67,7 +66,7 @@ def write(output_file_path, header, data):
     """
 
     # convert channel list to string
-    #data.channels = data.channels.apply(lambda x: channel_list_to_str(x))
+    data.channels = data.channels.apply(lambda x: channel_list_to_str(x))
 
     # write to file
     with open(output_file_path, 'w') as f:
@@ -76,7 +75,7 @@ def write(output_file_path, header, data):
         f.write('\n')
 
         # write data
-        data.to_csv(f, columns=REQUIRED_DATA_FIELDS[1:])
+        data.to_csv(f, columns=REQUIRED_DATA_FIELDS)
 
 def match(trace, source, destination, channels=None, transaction_id=None):
     """
@@ -111,12 +110,16 @@ def match(trace, source, destination, channels=None, transaction_id=None):
 
 def fill(file_path):
     """
-    Add lines with PDR and RSSI for each link if missing
+    Fill the file to match format
+      - Add row with PDR and RSSI for each link if missing
+      - Add row with missing channels
+      - Add tx_count column if missing
     :return: None
     """
 
     header, df = read(file_path)
     missing_rows = []
+    filled = False
 
     # fill missing links
     for link in get_missing_links(header, df):
@@ -125,12 +128,14 @@ def fill(file_path):
                 "datetime": link['transaction_fist_date'],
                 "src": link['src'],
                 "dst": link['dst'],
-                "channels": channel_list_to_str(header['channels']),
+                "channels": header['channels'],
                 "mean_rssi": None,
                 "pdr": 0,
+                "tx_count": None,
                 "transaction_id": link['transaction_id'],
             }
         )
+        filled = True
 
     # fill missing channels
     for name, group in df.groupby(["src", "dst", "transaction_id"]):
@@ -150,20 +155,28 @@ def fill(file_path):
                     "channels": [c],
                     "mean_rssi": None,
                     "pdr": 0,
+                    "tx_count": None,
                     "transaction_id": t_id,
                 }
             )
+        filled = True
 
-    if missing_rows:
-        # convert missing rows into dataframe
-        df_missing = pd.DataFrame(missing_rows)
-        df_missing.set_index("datetime", inplace=True)
+    # add tx_count column if missing
+    if "tx_count" not in df.columns:
+        df["tx_count"] = None
+        filled = True
 
-        # Merge Dataframes
-        df_result = pd.concat([df, df_missing])
-        df_result.sort_index(inplace=True)
+    if filled:
+        if missing_rows:
+            # convert missing rows into dataframe
+            df_missing = pd.DataFrame(missing_rows)
+            df_missing.set_index("datetime", inplace=True)
 
-        write("filled_" + file_path, header, df_result)
+            # Merge Dataframes
+            df = pd.concat([df, df_missing])
+            df.sort_index(inplace=True)
+
+        write(file_path + ".filled" , header, df)
 
 def check(file_path):
     """
@@ -173,9 +186,15 @@ def check(file_path):
 
     header, df = read(file_path)
 
+    # check missing header fields
     for required_header in REQUIRED_HEADER_FIELDS:
         if required_header not in header:
             print "Header {0} missing".format(required_header)
+
+    # check missing column
+    col_diff = set(REQUIRED_DATA_FIELDS) - set(df.columns)
+    if col_diff:
+        print "Wrong columns. Required columns are: {0}".format(REQUIRED_DATA_FIELDS)
 
     # check missing links
     expected_num_links = sum([x for x in range(header['node_count'])]) * 2
