@@ -24,13 +24,22 @@ def test_write():
         'start_date': "2018-01-11 16:33:07",
         'stop_date': "2018-01-12 00:05:24",
         'location': "grenoble",
+        'channels': range(11, 27)
     }
 
-    data = pd.DataFrame(
-        [
-            ["2018-01-11 16:33:07", 0, 1, [26], "-91.0", "0.92", "2"],
-        ],
-        columns=k7.REQUIRED_DATA_FIELDS
+    data = pd.DataFrame.from_dict(
+        {
+            "2018-01-11 16:33:07": {
+                "src": 0,
+                "dst": 1,
+                "channels": [25, 26],
+                "mean_rssi": -91.0,
+                "pdr": 0.92,
+                "tx_count": 100,
+                "transaction_id": 2
+            }
+        },
+        orient='index',
     )
     k7.write(OUTPUT_FILE, header=header, data=data)
     os.remove(OUTPUT_FILE)

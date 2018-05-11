@@ -75,7 +75,7 @@ def write(output_file_path, header, data):
         f.write('\n')
 
         # write data
-        data.to_csv(f, columns=REQUIRED_DATA_FIELDS)
+        data.to_csv(f, columns=REQUIRED_DATA_FIELDS, index_label='datetime')
 
 def match(trace, source, destination, channels=None, transaction_id=None):
     """
