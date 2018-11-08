@@ -23,6 +23,7 @@ setup(
     author_email='contact@kbl.netlib.re',
     classifiers=[
         'Programming Language :: Python :: 2.7',
+        'Programming Language :: Python :: 3',
     ],
     license='GPL',
     packages=['k7'],

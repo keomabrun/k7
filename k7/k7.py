@@ -189,31 +189,31 @@ def check(file_path):
     # check missing header fields
     for required_header in REQUIRED_HEADER_FIELDS:
         if required_header not in header:
-            print "Header {0} missing".format(required_header)
+            print("Header {0} missing".format(required_header))
 
     # check missing column
     col_diff = set(REQUIRED_DATA_FIELDS) - set(df.columns)
     if col_diff:
-        print "Wrong columns. Required columns are: {0}".format(REQUIRED_DATA_FIELDS)
+        print("Wrong columns. Required columns are: {0}".format(REQUIRED_DATA_FIELDS))
 
     # check missing links
     expected_num_links = sum([x for x in range(header['node_count'])]) * 2
     for transaction_id, transaction_df in df.groupby(["transaction_id"]):
         link_df = transaction_df.groupby(["src", "dst"])
         if len(link_df) != expected_num_links:
-            print "Missing links. Found {0}/{1} in transaction {2}".format(
+            print("Missing links. Found {0}/{1} in transaction {2}".format(
                 len(link_df),
                 expected_num_links,
                 transaction_id
-            )
+            ))
 
     # check missing channels
     for name, group in df.groupby(["src", "dst", "transaction_id"]):
         # find missing channels in group
         missing_channels = get_missing_channels(header['channels'], group)
         if missing_channels:
-            print "Channel missing for transaction {0}: {1}"\
-                  .format(name, missing_channels)
+            print("Channel missing for transaction {0}: {1}"\
+                  .format(name, missing_channels))
 
 def normalize(file_path):
     """
@@ -331,4 +331,4 @@ if __name__ == "__main__":
     elif args.file_to_normalize is not None:
         normalize(args.file_to_normalize)
     else:
-        print "Command {0} does not exits."
+        print("Command {0} does not exits.")
