@@ -103,76 +103,6 @@ def match(trace, source, destination, channels=None, transaction_id=None):
 
     return None
 
-def fill(file_path):
-    """
-    Fill the file to match format
-      - Add row with PDR and RSSI for each link if missing
-      - Add row with missing channels
-      - Add tx_count column if missing
-    :return: None
-    """
-
-    header, df = read(file_path)
-    missing_rows = []
-    filled = False
-
-    # fill missing links
-    for link in get_missing_links(header, df):
-        missing_rows.append(
-            {
-                "datetime": link['transaction_fist_date'],
-                "src": link['src'],
-                "dst": link['dst'],
-                "channels": header['channels'],
-                "mean_rssi": None,
-                "pdr": 0,
-                "tx_count": None,
-                "transaction_id": link['transaction_id'],
-            }
-        )
-        filled = True
-
-    # fill missing channels
-    for name, group in df.groupby(["src", "dst", "transaction_id"]):
-        first_date = group.index.min()
-        src, dst, t_id = name[0], name[1], name[2]
-
-        # find missing channels in group
-        missing_channels = get_missing_channels(header['channels'], group)
-
-        # add missing channel rows to list
-        for c in missing_channels:
-            missing_rows.append(
-                {
-                    "datetime": first_date,
-                    "src": src,
-                    "dst": dst,
-                    "channel": [c],
-                    "mean_rssi": None,
-                    "pdr": 0,
-                    "tx_count": None,
-                    "transaction_id": t_id,
-                }
-            )
-        filled = True
-
-    # add tx_count column if missing
-    if "tx_count" not in df.columns:
-        df["tx_count"] = 100
-        filled = True
-
-    if filled:
-        if missing_rows:
-            # convert missing rows into dataframe
-            df_missing = pd.DataFrame(missing_rows)
-            df_missing.set_index("datetime", inplace=True)
-
-            # Merge Dataframes
-            df = pd.concat([df, df_missing])
-            df.sort_index(inplace=True)
-
-        write(file_path + ".filled", header, df)
-
 def check(file_path):
     """
     Check if k7 format is respected
@@ -190,25 +120,6 @@ def check(file_path):
     col_diff = set(REQUIRED_DATA_FIELDS) - set(df.columns)
     if col_diff:
         print("Wrong columns. Required columns are: {0}".format(REQUIRED_DATA_FIELDS))
-
-    # check missing links
-    expected_num_links = sum([x for x in range(header['node_count'])]) * 2
-    for transaction_id, transaction_df in df.groupby(["transaction_id"]):
-        link_df = transaction_df.groupby(["src", "dst"])
-        if len(link_df) != expected_num_links:
-            print("Missing links. Found {0}/{1} in transaction {2}".format(
-                len(link_df),
-                expected_num_links,
-                transaction_id
-            ))
-
-    # check missing channels
-    for name, group in df.groupby(["src", "dst", "transaction_id"]):
-        # find missing channels in group
-        missing_channels = get_missing_channels(header['channels'], group)
-        if missing_channels:
-            print("Channel missing for transaction {0}: {1}"\
-                  .format(name, missing_channels))
 
 def normalize(file_path):
     """
@@ -268,20 +179,6 @@ def get_missing_links(header, df):
                     })
     return links
 
-def get_missing_channels(required_channels, data):
-    """ Find missing channels in a dataframe
-    :param list required_channels:
-    :param pandas.Dataframe data:
-    :rtype: list
-    """
-    channels = []
-    for channel in data.channel:
-        channel_list = channel
-        for channel in channel_list:
-            if channel not in channels:
-                channels.append(channel)
-    return list(set(required_channels) - set(channels))
-
 # ========================= main ==============================================
 
 if __name__ == "__main__":
@@ -293,11 +190,6 @@ if __name__ == "__main__":
                         help="check the dataset format",
                         type=str,
                         dest='file_to_check',
-                        )
-    parser.add_argument("--fill",
-                        help="add missing rows",
-                        type=str,
-                        dest='file_to_fill',
                         )
     parser.add_argument("--norm",
                         help="normalize file",
@@ -312,8 +204,6 @@ if __name__ == "__main__":
     # run corresponding method
     if args.file_to_check is not None:
         check(args.file_to_check)
-    elif args.file_to_fill is not None:
-        fill(args.file_to_fill)
     elif args.file_to_normalize is not None:
         normalize(args.file_to_normalize)
     else:
