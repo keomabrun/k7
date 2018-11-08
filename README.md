@@ -31,12 +31,12 @@ This will create a fille called `fill_myfile.k7` that contains the missing lines
 
 ```
 {"location": "grenoble", "tx_length": 100, "start_date": "2018-01-11 16:32:22", "stop_date": "2018-01-13 16:21:30", "node_count": 44, "channels": [11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26], "transaction_count": 10, "tx_ifdur": 100}
-datetime,src,dst,channels,mean_rssi,pdr,tx_count,transaction_id
-2018-01-11 16:33:07,05-43-32-ff-03-d9-a5-68,05-43-32-ff-02-d5-25-53,[11],-53.2,1.0,0
-2018-01-11 16:33:07,05-43-32-ff-03-d9-a5-68,05-43-32-ff-03-db-b2-76,[11],-84.03,0.97,0
-2018-01-11 16:33:07,05-43-32-ff-03-d9-a5-68,05-43-32-ff-03-d7-93-78,[11],-83.88,1.0,0
-2018-01-11 16:33:30,05-43-32-ff-03-d6-95-84,05-43-32-ff-03-da-a9-72,[11],-67.03,1.0,0
-2018-01-11 16:33:30,05-43-32-ff-03-d6-95-84,05-43-32-ff-03-da-c0-81,[11],-70.0,1.0,0
+datetime,src,dst,channel,mean_rssi,pdr,tx_count,transaction_id
+2018-01-11 16:33:07,05-43-32-ff-03-d9-a5-68,05-43-32-ff-02-d5-25-53,11,-53.2,1.0,0
+2018-01-11 16:33:07,05-43-32-ff-03-d9-a5-68,05-43-32-ff-03-db-b2-76,11,-84.03,0.97,0
+2018-01-11 16:33:07,05-43-32-ff-03-d9-a5-68,05-43-32-ff-03-d7-93-78,11,-83.88,1.0,0
+2018-01-11 16:33:30,05-43-32-ff-03-d6-95-84,05-43-32-ff-03-da-a9-72,11,-67.03,1.0,0
+2018-01-11 16:33:30,05-43-32-ff-03-d6-95-84,05-43-32-ff-03-da-c0-81,11,-70.0,1.0,0
 ...
 ```
 
@@ -49,26 +49,26 @@ Ex:
 ```
 
 ## Data
-| datetime            | src     | dst     | channels | mean_rssi | pdr         | tx_count | transaction_id |
-|---------------------|---------|---------|----------|-----------|-------------|----------|----------------|
-|  iso8601 string     | int     | int     | list     | float     | float (0-1) | int      | int            |
+| datetime            | src     | dst     | channel | mean_rssi | pdr         | tx_count | transaction_id |
+|---------------------|---------|---------|---------|-----------|-------------|----------|----------------|
+|  iso8601 string     | int     | int     | int     | float     | float (0-1) | int      | int            |
 
 ### Standard example:
 
-| datetime            | src     | dst     | channels | mean_rssi | pdr  | tx_count | transaction_id |
-|---------------------|---------|---------|----------|-----------|------|----------|----------------|
-| 2017-12-19 21:35:41 | 0       | 1       | [11]     | -74.5     | 1.0  | 100      | 1              |
+| datetime            | src     | dst     | channel | mean_rssi | pdr  | tx_count | transaction_id |
+|---------------------|---------|---------|---------|-----------|------|----------|----------------|
+| 2017-12-19 21:35:41 | 0       | 1       |  11     | -74.5     | 1.0  | 100      | 1              |
 
 ### The source or destination can be empty (i.e when measured on all the neighbors of the src):
 
-| datetime            | src     | dst     | channels | mean_rssi | pdr  | tx_count | transaction_id |
-|---------------------|---------|---------|----------|-----------|------|----------|----------------|
-| 2017-12-19 21:35:41 |         |         | [11]     | -74.5     | 0.7  | 100      | 1              |
+| datetime            | src     | dst     | channel | mean_rssi | pdr  | tx_count | transaction_id |
+|---------------------|---------|---------|---------|-----------|------|----------|----------------|
+| 2017-12-19 21:35:41 |         |         |  11     | -74.5     | 0.7  | 100      | 1              |
 
-### Multiple channels:
+### Unknown channel:
 
-| datetime            | src     | dst     | channels | mean_rssi | pdr  | tx_count | transaction_id |
-|---------------------|---------|---------|----------|-----------|------|----------|----------------|
-| 2017-12-19 21:35:41 | 1       | 2       | [11;12]  | -79.5     | 1.0  | 100      | 2              |
+| datetime            | src     | dst     | channel | mean_rssi | pdr  | tx_count | transaction_id |
+|---------------------|---------|---------|---------|-----------|------|----------|----------------|
+| 2017-12-19 21:35:41 | 1       | 2       |         | -79.5     | 1.0  | 100      | 2              |
 
-When the channel list contains more than one element, it means that the PDR and RSSI value are calculated (averaged) over multiple channels.
+When the channel value is empty, it means that the channel is unknown for that measurement.

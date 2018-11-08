@@ -21,7 +21,7 @@ REQUIRED_HEADER_FIELDS = [
 REQUIRED_DATA_FIELDS = (
     'src',
     'dst',
-    'channels',
+    'channel',
     'mean_rssi',
     'pdr',
     'tx_count',
@@ -51,7 +51,6 @@ def read(file_path):
         parse_dates = ['datetime'],
         index_col = [0],  # make datetime column as index
         skiprows = 1,
-        converters = {'channels': lambda x: [int(c) for c in x.strip("[]").split(';')]}
     )
 
     return header, data
@@ -64,10 +63,6 @@ def write(output_file_path, header, data):
     :param pandas.Dataframe data:
     :return: None
     """
-
-    # convert channel list to string
-    data.channels = data.channels.apply(lambda x: channel_list_to_str(x))
-
     # write to file
     with open(output_file_path, 'w') as f:
         # write header
@@ -152,7 +147,7 @@ def fill(file_path):
                     "datetime": first_date,
                     "src": src,
                     "dst": dst,
-                    "channels": [c],
+                    "channel": [c],
                     "mean_rssi": None,
                     "pdr": 0,
                     "tx_count": None,
@@ -176,7 +171,7 @@ def fill(file_path):
             df = pd.concat([df, df_missing])
             df.sort_index(inplace=True)
 
-        write(file_path + ".filled" , header, df)
+        write(file_path + ".filled", header, df)
 
 def check(file_path):
     """
@@ -280,21 +275,12 @@ def get_missing_channels(required_channels, data):
     :rtype: list
     """
     channels = []
-    for channel in data.channels:
+    for channel in data.channel:
         channel_list = channel
         for channel in channel_list:
             if channel not in channels:
                 channels.append(channel)
     return list(set(required_channels) - set(channels))
-
-def channel_list_to_str(channel_list):
-    """
-    [11,12,13] --> "[11;12;13]"
-    :param list channel_list:
-    :return:
-    :rtype: str
-    """
-    return '[' + ';'.join([str(c) for c in channel_list]) + ']'
 
 # ========================= main ==============================================
 
