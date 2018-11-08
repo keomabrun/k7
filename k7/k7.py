@@ -16,7 +16,7 @@ REQUIRED_HEADER_FIELDS = [
     'node_count',
     'transaction_count',
     'channels',
-    'tx_ifdur',
+    'interframe_duration',
 ]
 REQUIRED_DATA_FIELDS = (
     'src',
@@ -35,15 +35,22 @@ def read(file_path):
     :return:
     :rtype: dict, pandas.Dataframe
     """
+
+    # detect filetype
+    is_gzip = False
+    gzip_format = "\x1f\x8b\x08"
+    with open(file_path) as f:
+        file_start = f.read(len(gzip_format))
+        if file_start == gzip_format:
+            is_gzip = True
+
     # read header
-    if file_path.endswith('k7.gz'):
+    if is_gzip:
         with gzip.open(file_path, 'r') as f:
             header = json.loads(f.readline())
-    elif file_path.endswith('k7'):
+    else:
         with open(file_path, 'r') as f:
             header = json.loads(f.readline())
-    else:
-        raise Exception("Supported file extensions are: {0}".format(["k7.gz", "k7"]))
 
     # read data
     data = pd.read_csv(
@@ -64,7 +71,7 @@ def write(output_file_path, header, data):
     :return: None
     """
     # write to file
-    with open(output_file_path, 'w') as f:
+    with gzip.open(output_file_path, 'w') as f:
         # write header
         json.dump(header, f)
         f.write('\n')
@@ -149,7 +156,7 @@ def normalize(file_path):
 
     # save file
     if normalized:
-        write("norm_" + file_path, header, df)
+        write(file_path + ".norm", header, df)
 
 # ========================= helpers ===========================================
 
