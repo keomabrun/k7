@@ -32,7 +32,7 @@ def test_write():
             "2018-01-11 16:33:07": {
                 "src": 0,
                 "dst": 1,
-                "channels": [25, 26],
+                "channel": 25,
                 "mean_rssi": -91.0,
                 "pdr": 0.92,
                 "tx_count": 100,
@@ -51,5 +51,5 @@ def test_check(file_path):
 @pytest.mark.parametrize("file_path", INPUT_FILES)
 def test_match(file_path):
     header, trace = k7.read(file_path)
-    assert k7.match(trace, 0, 1,  [11]) is not None
-    assert k7.match(trace, 0, 1, [999]) is None
+    assert k7.match(trace, 0, 4,  11) is not None
+    assert k7.match(trace, 0, 1, 999) is None

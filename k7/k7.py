@@ -72,20 +72,16 @@ def write(output_file_path, header, data):
         # write data
         data.to_csv(f, columns=REQUIRED_DATA_FIELDS, index_label='datetime')
 
-def match(trace, source, destination, channels=None, transaction_id=None):
+def match(trace, source, destination, channel=None, transaction_id=None):
     """
     Find matching rows in the k7
     :param pandas.Dataframe trace:
     :param int source:
     :param int destination:
-    :param list channels:
+    :param int channel:
     :param int transaction_id:
     :return: None | pandas.core.series.Series
     """
-
-    # channel
-    if channels is None:
-        channels = [c for c in range(11, 27)]
 
     # transaction id
     if transaction_id is None:
@@ -97,7 +93,7 @@ def match(trace, source, destination, channels=None, transaction_id=None):
                 row['src'] == source and
                 row['dst'] == destination and
                 row['transaction_id'] == transaction_id and
-                set(channels) < set(row['channels'])
+                row['channel'] == channel
         ):
             return row
 
