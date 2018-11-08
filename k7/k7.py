@@ -163,7 +163,7 @@ def fill(file_path):
 
     # add tx_count column if missing
     if "tx_count" not in df.columns:
-        df["tx_count"] = None
+        df["tx_count"] = 100
         filled = True
 
     if filled:
@@ -234,6 +234,11 @@ def normalize(file_path):
         for i in range(len(node_ids)):
             df.src = df.src.str.replace(node_ids[i], str(i))
             df.dst = df.dst.str.replace(node_ids[i], str(i))
+
+    # tx_count as column
+    if 'tx_count' in header:
+        df['tx_count'] = header['tx_count']
+        del header["tx_count"]
 
     # normalize pdr: 0-100 to 0-1
     if df.pdr.max() > 1:
