@@ -14,7 +14,6 @@ REQUIRED_HEADER_FIELDS = [
     'stop_date',
     'location',
     'node_count',
-    'transaction_count',
     'channels',
     'interframe_duration',
 ]
@@ -24,8 +23,7 @@ REQUIRED_DATA_FIELDS = (
     'channel',
     'mean_rssi',
     'pdr',
-    'tx_count',
-    'transaction_id'
+    'tx_count'
 )
 
 def read(file_path):
@@ -79,27 +77,21 @@ def write(output_file_path, header, data):
         # write data
         data.to_csv(f, columns=REQUIRED_DATA_FIELDS, index_label='datetime')
 
-def match(trace, source, destination, channel=None, transaction_id=None):
+def match(trace, source, destination, channel=None):
     """
     Find matching rows in the k7
     :param pandas.Dataframe trace:
     :param int source:
     :param int destination:
     :param int channel:
-    :param int transaction_id:
     :return: None | pandas.core.series.Series
     """
-
-    # transaction id
-    if transaction_id is None:
-        transaction_id = trace.transaction_id.min()
 
     # get rows
     for index, row in trace.iterrows():
         if (
                 row['src'] == source and
                 row['dst'] == destination and
-                row['transaction_id'] == transaction_id and
                 row['channel'] == channel
         ):
             return row
@@ -131,15 +123,13 @@ def normalize(file_path):
     :param file_path:
     :return: None
     """
-    normalized = False
 
     # read file
     header, df = read(file_path)
 
     # normalize src and dst
     if df.src.dtype != np.int64:
-        normalized = True
-        node_ids = df.src.unique()
+        node_ids = list(set(df.src.unique()).union(set(df.dst.unique())))
         for i in range(len(node_ids)):
             df.src = df.src.str.replace(node_ids[i], str(i))
             df.dst = df.dst.str.replace(node_ids[i], str(i))
@@ -151,36 +141,23 @@ def normalize(file_path):
 
     # normalize pdr: 0-100 to 0-1
     if df.pdr.max() > 1:
-        normalized = True
         df.pdr = df.pdr / 100.0
 
+    # normalize JSON header
+    if 'stop_date' not in header:
+        header['stop_date'] = str(df.index.max())
+    if 'channel_count' in header or 'channels' not in header:
+        del header['channel_count']
+        header['channels'] = [n+11 for n in range(16)]
+    if 'site' in header:
+        header['location'] = header['site']
+        del header['site']
+    if 'tx_ifdur' in header:
+        header['interframe_duration'] = header['tx_ifdur']
+        del header['tx_ifdur']
+
     # save file
-    if normalized:
-        write(file_path + ".norm", header, df)
-
-# ========================= helpers ===========================================
-
-def get_missing_links(header, df):
-    """ Find missing links in a dataframe
-    :param dict header:
-    :param pd.Dataframe df:
-    :return: a list of dict
-    :rtype: list
-    """
-    links = []
-    for transaction_id, transaction_df in df.groupby(["transaction_id"]):
-        for src in range(header['node_count']):
-            for dst in range(header['node_count']):
-                if src == dst:
-                    continue
-                if not ((transaction_df['src'] == src) & (transaction_df['dst'] == dst)).any():
-                    links.append({
-                        'transaction_fist_date': transaction_df.index[0],
-                        'transaction_id': transaction_id,
-                        'src': src,
-                        'dst': dst
-                    })
-    return links
+    write(file_path + ".norm", header, df)
 
 # ========================= main ==============================================
 
