@@ -36,7 +36,6 @@ def test_write():
                 "mean_rssi": -91.0,
                 "pdr": 0.92,
                 "tx_count": 100,
-                "transaction_id": 2
             }
         },
         orient='index',
