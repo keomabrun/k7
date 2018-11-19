@@ -116,6 +116,11 @@ def check(file_path):
     if col_diff:
         print("Wrong columns. Required columns are: {0}".format(REQUIRED_DATA_FIELDS))
 
+    # check JSON header matches data
+    node_ids = list(set(df.src.unique()).union(set(df.dst.unique())))
+    if len(node_ids) != header['node_count']:
+        print("Wrong header. node_count is {0}, should be {1}".format(header['node_count'], len(node_ids)))
+
 def normalize(file_path):
     """
     Normalize the given file:
